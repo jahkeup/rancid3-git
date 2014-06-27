@@ -360,6 +360,8 @@ if [ $RALL -ne 0 -o $RDOWN -ne 0 -o $RUP -ne 0 ] ; then
 	IFS=$OFS
 	router=$1
 
+	message="Created new $router config file"
+
 	touch $router
 	case $RCSSYS in
 	    cvs )
@@ -379,6 +381,7 @@ if [ $RALL -ne 0 -o $RDOWN -ne 0 -o $RUP -ne 0 ] ; then
 		;;
 	esac
 	echo "Added $router"
+	unset message
     done
     echo
     cd $DIR
@@ -573,6 +576,20 @@ done
 # Diff the directory and then checkin.
 trap 'rm -fr $TMP $TMP.diff $DIR/routers.single;' 1 2 15
 cd $DIR
+
+if [ $alt_mailrcpt -eq 1 ] ; then
+    subject="router config diffs - courtesy of $mailrcpt"
+else
+    subject="router config diffs"
+fi
+if [ "X$device" != "X" ] ; then
+    subject="$GROUP/$device $subject"
+    message="updates of group $GROUP - courtesy of $mailrcpt"
+else
+    subject="$GROUP $subject"
+    message="updates of group $subject"
+fi
+
 case $RCSSYS in
     cvs )
         if [ $HTMLMAILS == YES ]; then
@@ -629,19 +646,7 @@ case $RCSSYS in
 	) 200>$BASEDIR/.lockfile
 	;;
 esac
-
-if [ $alt_mailrcpt -eq 1 ] ; then
-    subject="router config diffs - courtesy of $mailrcpt"
-else
-    subject="router config diffs"
-fi
-if [ "X$device" != "X" ] ; then
-    $RCSSYS commit -m "updates - courtesy of $mailrcpt"
-    subject="$GROUP/$device $subject"
-else
-    $RCSSYS commit -m updates
-    subject="$GROUP $subject"
-fi
+unset message
 
 # Mail out the diffs (if there are any).
 if [ -s $TMP.diff ] ; then
