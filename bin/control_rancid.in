@@ -166,7 +166,7 @@ if [ ! -d $DIR ] ; then
 	echo ""
 	echo "$DIR does not exist."
 	echo "Run bin/rancid-cvs $GROUP to make all of the needed directories."
-    ) | @SENDMAIL@ -t $MAILOPTS
+    ) | $SENDMAIL -t $MAILOPTS
     exit 1
 fi
 cd $DIR
@@ -259,7 +259,7 @@ if [ ! -f $DIR/router.db ] ; then
 	echo "$MAILHEADERS" | awk '{L = "";LN = $0;while (LN ~ /\\n/) { I = index(LN,"\\n");L = L substr(LN,0,I-1) "\n";LN = substr(LN,I+2,length(LN)-I-1);}print L LN;}'
 	echo ""
 	echo "$DIR/router.db does not exist."
-    ) | @SENDMAIL@ -t $MAILOPTS
+    ) | $SENDMAIL -t $MAILOPTS
     exit 1;
 fi
 
@@ -345,7 +345,7 @@ if [ $RALL -ne 0 -o $RDOWN -ne 0 -o $RUP -ne 0 ] ; then
 	  echo "$MAILHEADERS" | awk '{L = "";LN = $0;while (LN ~ /\\n/) { I = index(LN,"\\n");L = L substr(LN,0,I-1) "\n";LN = substr(LN,I+2,length(LN)-I-1);}print L LN;}'
 	  echo ""
 	  cat routers.mail
-	) | @SENDMAIL@ -t $MAILOPTS
+	) | $SENDMAIL -t $MAILOPTS
     fi
     rm -f routers.mail
 
@@ -667,7 +667,7 @@ if [ -s $TMP.diff ] ; then
 		echo "$MAILHEADERS" | awk '{L = "";LN = $0;while (LN ~ /\\n/) { I = index(LN,"\\n");L = L substr(LN,0,I-1) "\n";LN = substr(LN,I+2,length(LN)-I-1);}print L LN;}'
 		echo ""
 		cat $TMP.diff
-            ) | @SENDMAIL@ -oi -t $MAILOPTS
+            ) | $SENDMAIL -oi -t $MAILOPTS
 	else
             (
 		echo "To: $mailrcpt"
@@ -675,7 +675,7 @@ if [ -s $TMP.diff ] ; then
 		echo "$MAILHEADERS" | awk '{L = "";LN = $0;while (LN ~ /\\n/) { I = index(LN,"\\n");L = L substr(LN,0,I-1) "\n";LN = substr(LN,I+2,length(LN)-I-1);}print L LN;}'
 		echo ""
 		cat $TMP.diff
-            ) | @SENDMAIL@ -t $MAILOPTS
+            ) | $SENDMAIL -t $MAILOPTS
 	fi
     else
 	# Otherwise, split up the file and mail out.
@@ -704,7 +704,7 @@ if [ -s $TMP.diff ] ; then
 		echo "$MAILHEADERS" | awk '{L = "";LN = $0;while (LN ~ /\\n/) { I = index(LN,"\\n");L = L substr(LN,0,I-1) "\n";LN = substr(LN,I+2,length(LN)-I-1);}print L LN;}'
 		echo ""
 		cat $file
-		) | @SENDMAIL@ -t $MAILOPTS
+		) | $SENDMAIL -t $MAILOPTS
 		LASTIDS="$LASTIDS $MSGID"
 		if [ $n -lt $nfiles ]; then
 		    # this just tries to make the msgs order right in MUAs
@@ -736,7 +736,7 @@ if [ -s $DIR/routers.failed ] ; then
 	  echo "more than $OLDTIME hours."
 
 	  cat $DIR/routers.failed
-	) | @SENDMAIL@ -t $MAILOPTS
+	) | $SENDMAIL -t $MAILOPTS
 fi
 
 # Cleanup
