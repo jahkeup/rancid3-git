@@ -638,8 +638,8 @@ case $RCSSYS in
                 fi
 		if [ $RCSSYS = "git-remote" ] ; then
                     # only push to remotes if commit was successful
-                    for repo in $(git remote) ; do
-			git push ${repo}
+                    for remote in $(git remote) ; do
+			git push ${remote}
                     done
 		fi
             fi
