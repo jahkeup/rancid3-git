@@ -8,7 +8,7 @@
    Change made in [[file:bin/control_rancid.in::RCSSYS%3D${RCSSYS:%3D}%3B][control_rancid.in]]
 ** HTML Mail doesn't work with MAXSZ, don't use it with HTMLMAILS=YES
 
-
+** Bash is required by rancid-cvs
 * Notes
 
 ** Make (install) must be called from the top level dir
