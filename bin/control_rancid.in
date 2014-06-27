@@ -360,7 +360,7 @@ if [ $RALL -ne 0 -o $RDOWN -ne 0 -o $RUP -ne 0 ] ; then
 	IFS=$OFS
 	router=$1
 
-	message="Created new $router config file"
+	message="created new $router config file"
 
 	touch $router
 	case $RCSSYS in
