@@ -1,0 +1,10 @@
+* Credits
+** dotwaffle
+   I must admit took much of the work you did and ported it over to
+   the rancid 3 release. 
+
+* Notable Changes
+** Git is default RCSSYS
+   Change made in [[file:bin/control_rancid.in::RCSSYS%3D${RCSSYS:%3D}%3B][control_rancid.in]]
+** HTML Mail doesn't work with MAXSZ, don't use it with HTMLMAILS=YES
+

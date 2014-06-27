@@ -39,7 +39,7 @@
 ## CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ## ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ## POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # control_rancid $GROUP
 #
 
@@ -131,8 +131,8 @@ unset noclobber > /dev/null 2>&1
 SENDMAIL=${SENDMAIL:=sendmail};
 
 # RCS system
-RCSSYS=${RCSSYS:=cvs};
-if [ $RCSSYS != "cvs" -a $RCSSYS != "svn" ] ; then
+RCSSYS=${RCSSYS:=git};
+if [ $RCSSYS != "cvs" -a $RCSSYS != "svn" -a $RCSSYS != "git" -a $RCSSYS != "git-remote" ] ; then
     echo "$RCSSYS is not a valid value for RCSSYS."
     exit 1
 fi
@@ -171,21 +171,51 @@ if [ ! -d $DIR ] ; then
 fi
 cd $DIR
 
+create_ignore () {
+    echo "*~"
+    echo "routers.added"
+    echo "routers.all"
+    echo "routers.all.new"
+    echo "routers.db"
+    echo "routers.deleted"
+    echo "routers.down"
+    echo "routers.down.new"
+    echo "routers.failed"
+    echo "routers.mail"
+    echo "routers.single"
+    echo "routers.up"
+    echo "routers.up.new"
+    echo "routers.up.missed"
+}
+
 # create a .cvsignore
-if [ ! -f .cvsignore ] ; then
-    rm -f .cvsignore
-    cat >.cvsignore <<EOF
-.cvsignore
-routers.all
-routers.down
-routers.up
-EOF
-    if [ $RCSSYS = svn ] ; then
-	svn propset svn:ignore -F .cvsignore .
-	svn update .
-	svn commit -m 'set svn:ignores' .
-    fi
-fi
+case $RCSSYS in
+    cvs)
+	rm -f .cvsignore
+	create_ignore > .cvsignore
+	;;
+    svn)
+	svn proplist . | grep -q 'svn:ignore'
+	if [ $? -ne 0 ]; then
+	    create_ignore > .svnignore
+	    svn propset svn:ignore -F .svnignore .
+	    svn commit -m 'set svn:ignores' .
+	    rm -f .svnignore
+	fi
+	;;
+    git | git-remote )
+	if [ ! -f .gitignore ]; then
+	    rm -f .gitignore
+	    create_ignore > .gitignore
+	    (
+		flock -x 200
+		git add .gitignore
+		git commit -m "Adding .gitignore" ) 200>$BASEDIR/.lockfile
+	fi
+	;;
+    *)
+
+esac
 
 # check if there is a rancid.conf and if it needs to be added to the RCS
 if [ -f rancid.conf ] ; then
@@ -201,16 +231,25 @@ if [ -f rancid.conf ] ; then
 fi
 
 # do cvs update of router.db in case anyone has fiddled.
-$RCSSYS update router.db > $TMP 2>&1
-grep "^C" $TMP > /dev/null
-if [ $? -eq 0 ] ; then
-    echo "There were $RCSSYS conflicts during update."
-    echo ""
-    cat $TMP
-    rm -f $TMP
-    exit 1
-fi
-rm -f $TMP
+case $RCSSYS in
+    cvs | svn )
+        # do cvs/svn update of router.db in case anyone has fiddled.
+       $RCSSYS update router.db > $TMP 2>&1
+       grep "^C" $TMP > /dev/null
+       if [ $? -eq 0 ] ; then
+           echo "There were $RCSSYS conflicts during update."
+           echo ""
+           cat $TMP
+           rm -f $TMP
+           exit 1
+       fi
+       rm -f $TMP
+       ;;
+    git | git-remote )
+       # do nothing here (for now)
+       ;;
+esac
+
 
 if [ ! -f $DIR/router.db ] ; then
     echo "$DIR/router.db does not exist."
@@ -322,12 +361,23 @@ if [ $RALL -ne 0 -o $RDOWN -ne 0 -o $RUP -ne 0 ] ; then
 	router=$1
 
 	touch $router
-	if [ $RCSSYS = cvs ] ; then
-	    cvs add -ko $router
-	else
-	    svn add $router
-	fi
-	$RCSSYS commit -m 'new router' $router
+	case $RCSSYS in
+	    cvs )
+		cvs add -ko $router
+		cvs commit -m "$message" $router
+		;;
+	    svn )
+		svn add $router
+		svn commit -m "$message" $router
+		;;
+	    git | git-remote )
+		(
+		    flock -x 200
+		    git add $router
+		    git commit -m "$message"
+		) 200>$BASEDIR/.lockfile
+		;;
+	esac
 	echo "Added $router"
     done
     echo
@@ -352,29 +402,57 @@ trap 'rm -fr $TMP;' 1 2 15
 cd $DIR/configs
 # check for 'up' routers missing in RCS.  no idea how this happens to some folks
 for router in `cut -d\; -f1 ../routers.up` ; do
-    if [ $RCSSYS = cvs ] ; then
-	cvs status $router | grep -i 'status: unknown' > /dev/null 2>&1
-    else
-	svn status $router | grep '^?' > /dev/null 2>&1
-    fi
-    if [ $? -eq 0 ] ; then
-	touch $router
-	if [ $RCSSYS = cvs ] ; then
-	    cvs add -ko $router
-	else
-	    svn add $router
-	fi
-	echo "$RCSSYS added missing router $router"
-    fi
+    case $RCSSYS in
+       cvs )
+           cvs status $router | grep -i 'status: unknown' > /dev/null 2>&1
+           if [ $? -eq 0 ]; then
+               touch $router
+               cvs add -ko $router
+               echo "$RCSSYS added missing router $router"
+           fi
+           ;;
+       svn )
+           svn status $router | grep '^?' > /dev/null 2>&1
+           if [ $? -eq 0 ]; then
+               touch $router
+               svn add $router
+               echo "$RCSSYS added missing router $router"
+           fi
+           ;;
+       git | git-remote )
+           git ls-files $router > /dev/null 2>&1
+           if [ $? -eq 1 ]; then
+               touch $router
+               (
+                   flock -x 200
+                   git add $router
+                   git commit -m "added missing router $router"
+               ) 200>$BASEDIR/.lockfile
+               echo "$RCSSYS added missing router $router"
+           fi
+           ;;
+    esac
 done
 echo
+
 # delete configs from RCS for routers not listed in routers.up.
 for router in `find . \( -name \*.new -prune -o -name CVS -prune -o -name .svn -prune \) -o -type f -print | sed -e 's/^.\///'` ; do
     grep -i "^$router\;" ../router.db > /dev/null 2>&1
     if [ $? -eq 1 ] ; then
 	rm -f $router
-	$RCSSYS delete $router
-	$RCSSYS commit -m 'deleted router' $router
+	case $RCSSYS in
+            cvs | svn )
+		$RCSSYS delete $router
+		$RCSSYS commit -m "deleted router $router" $router
+		;;
+            git | git-remote )
+		(
+                    flock -x 200
+                    git rm $router
+                    git commit -m "deleted router $router"
+		) 200>$BASEDIR/.lockfile
+		;;
+	esac
 	echo "Deleted $router"
     fi
 done
@@ -384,7 +462,19 @@ cd $DIR
 if [ ! -s routers.up ]
 then
     # commit router.db
-    $RCSSYS commit -m updates router.db
+    message="updates of group $GROUP"
+    case $RCSSYS in
+	cvs | svn )
+	    $RCSSYS commit -m "$message" router.db
+	    ;;
+	git | git-remote )
+	    (
+		flock -x 200
+		git add router.db
+		git commit -m "$message"
+	    ) 200>$BASEDIR/.lockfile
+	    ;;
+    esac
     exit;
 fi
 
@@ -483,12 +573,62 @@ done
 # Diff the directory and then checkin.
 trap 'rm -fr $TMP $TMP.diff $DIR/routers.single;' 1 2 15
 cd $DIR
-if [ $RCSSYS = "cvs" ] ; then
-    cvs -f @DIFF_CMD@ -ko | sed -e '/^RCS file: /d' -e '/^--- /d' \
-	-e '/^+++ /d' -e 's/^\([-+ ]\)/\1 /' >$TMP.diff
-else
-    svn diff | sed -e '/^+++ /d' -e 's/^\([-+ ]\)/\1 /' >$TMP.diff
-fi
+case $RCSSYS in
+    cvs )
+        if [ $HTMLMAILS == YES ]; then
+	    cvs -f @DIFF_CMD@ -ko > /dev/null
+	    if [ $? -qe 0 ] ; then
+  	        # only process HTML mail fi there really is a difference
+  	        cvs -f @DIFF_CMD@ -ko | sed -e '/^RCS file: /d' -e '/^--- /d' \
+                    -e '/^+++ /d' -e 's/^\([-+ ]\)/\1 /' | ansi2html >$TMP.diff
+    	    fi
+        else
+            cvs -f @DIFF_CMD@ -ko | sed -e '/^RCS file: /d' -e '/^--- /d' \
+                -e '/^+++ /d' -e 's/^\([-+ ]\)/\1 /' >$TMP.diff
+        fi
+    	    cvs commit -m "$message"
+	;;
+    svn )
+        if [ $HTMLMAILS == YES ]; then
+            svn diff | sed -e '/^+++ /d' -e 's/^\([-+ ]\)/\1 /' | ansi2html >$TMP.diff
+        else
+            svn diff | sed -e '/^+++ /d' -e 's/^\([-+ ]\)/\1 /' >$TMP.diff
+	fi
+	    svn commit -m "$message"
+	;;
+    git | git-remote )
+	# with git we do things differently - first commit, then grab the diff
+	(
+	    flock -x 200
+	    git add router.db
+	    for router in `cat $devlistfile | cut -d: -f1`
+	    do
+		git add configs/$router
+	    done
+	    git commit -m "$message"
+	    if [ $? -eq 0 ]; then
+    		# only generate a diff if the commit was successful
+		if [ $HTMLMAILS == YES ]; then
+                    git diff --patch-with-stat --quiet HEAD^ HEAD -- .
+                    if [ $? -eq 1 ] ; then
+			# only process HTML mail if there really is a difference
+			which pygmentize || (echo "You don't have pygments installed.."; exit 1)
+			PYGMENT_STYLE=${PYGMENT_STYLE:-native}
+			git diff --color --patch-with-stat HEAD^ HEAD -- . | pygmentize -f html -l diff -O full,noclasses,style="$PYGMENT_STYLE" > $TMP.diff
+                    fi
+                else
+                    git diff --patch-with-stat HEAD^ HEAD -- . >$TMP.diff
+                fi
+		if [ $RCSSYS = "git-remote" ] ; then
+                    # only push to remotes if commit was successful
+                    for repo in $(git remote) ; do
+			git push ${repo}
+                    done
+		fi
+            fi
+	) 200>$BASEDIR/.lockfile
+	;;
+esac
 
 if [ $alt_mailrcpt -eq 1 ] ; then
     subject="router config diffs - courtesy of $mailrcpt"
@@ -505,6 +645,7 @@ fi
 
 # Mail out the diffs (if there are any).
 if [ -s $TMP.diff ] ; then
+    # Split up the email if the diff is huge.
     MAXSZ=${MAILSPLIT:=0}
     if [ $MAXSZ -ne 0 ] ; then
 	BLOCKSIZE=1024; export BLOCKSIZE
@@ -514,15 +655,30 @@ if [ -s $TMP.diff ] ; then
 	    MAXSZ=0
 	fi
     fi
+    # if not too big or not specified to do split, then email as is:
     if [ $MAXSZ -eq 0 ] ; then
-	(
-	  echo "To: $mailrcpt"
-	  echo "Subject: $subject"
-	  echo "$MAILHEADERS" | awk '{L = "";LN = $0;while (LN ~ /\\n/) { I = index(LN,"\\n");L = L substr(LN,0,I-1) "\n";LN = substr(LN,I+2,length(LN)-I-1);}print L LN;}'
-	  echo ""
-	  cat $TMP.diff
-	) | @SENDMAIL@ -t $MAILOPTS
+	if [ $HTMLMAILS == YES ]; then
+            (
+		echo "To: $mailrcpt"
+		echo "Subject: $subject"
+		echo "Mime-Version: 1.0"
+		echo "Content-type: text/html"
+		echo "Content-transfer-encoding: 8bit"
+		echo "$MAILHEADERS" | awk '{L = "";LN = $0;while (LN ~ /\\n/) { I = index(LN,"\\n");L = L substr(LN,0,I-1) "\n";LN = substr(LN,I+2,length(LN)-I-1);}print L LN;}'
+		echo ""
+		cat $TMP.diff
+            ) | @SENDMAIL@ -oi -t $MAILOPTS
+	else
+            (
+		echo "To: $mailrcpt"
+		echo "Subject: $subject"
+		echo "$MAILHEADERS" | awk '{L = "";LN = $0;while (LN ~ /\\n/) { I = index(LN,"\\n");L = L substr(LN,0,I-1) "\n";LN = substr(LN,I+2,length(LN)-I-1);}print L LN;}'
+		echo ""
+		cat $TMP.diff
+            ) | @SENDMAIL@ -t $MAILOPTS
+	fi
     else
+	# Otherwise, split up the file and mail out.
 	CDIR=`pwd`
 	SDIR=${TMPDIR:=/tmp}/rancid.$GROUP.$$.mail
 	error=`mkdir $SDIR`
