@@ -51,8 +51,9 @@ CVSROOT=$BASEDIR/CVS; export CVSROOT
 # Location of log files produced by rancid-run(1).
 LOGDIR=$BASEDIR/logs; export LOGDIR
 #
-# Select which RCS system to use, "cvs" (default) or "svn".  Do not change
-# this after CVSROOT has been created with rancid-cvs.  Changing between these
+# Select which RCS system to use, "cvs" (default), "svn", "git" or
+# "git-remote".  Do not change this after CVSROOT has been created with
+# rancid-cvs, with the exception of git <-> git-remote.  Changing between these
 # requires manual conversions.
 RCSSYS=@RCSSYS@; export RCSSYS
 #
@@ -114,3 +115,13 @@ RCSSYS=@RCSSYS@; export RCSSYS
 #
 # Split diffs larger then N kbytes
 #MAILSPLIT=0; export MAILSPLIT
+# 
+# If you want to have colorised html mails with the diffs set this to YES
+# Note: you *must* have pygments installed for this to work.
+#HTMLMAILS=YES; export HTMLMAILS
+#
+# If you want to set the theme that pygmentize should use, set this to
+# the name of the theme that you'd like to use (this theme name must
+# be one that is accessible and recognized by pygmentize).
+#PYGMENT_STYLE=native; export PYGMENT_STYLE
+
