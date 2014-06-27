@@ -594,6 +594,7 @@ case $RCSSYS in
     cvs )
         if [ $HTMLMAILS == YES ]; then
 	    cvs -f @DIFF_CMD@ -ko > /dev/null
+	    # TODO: Get pygments working here
 	    if [ $? -qe 0 ] ; then
   	        # only process HTML mail fi there really is a difference
   	        cvs -f @DIFF_CMD@ -ko | sed -e '/^RCS file: /d' -e '/^--- /d' \
@@ -607,6 +608,7 @@ case $RCSSYS in
 	;;
     svn )
         if [ $HTMLMAILS == YES ]; then
+	    # TODO: Get pygments working here
             svn diff | sed -e '/^+++ /d' -e 's/^\([-+ ]\)/\1 /' | ansi2html >$TMP.diff
         else
             svn diff | sed -e '/^+++ /d' -e 's/^\([-+ ]\)/\1 /' >$TMP.diff
@@ -629,9 +631,9 @@ case $RCSSYS in
                     git diff --patch-with-stat --quiet HEAD^ HEAD -- .
                     if [ $? -eq 1 ] ; then
 			# only process HTML mail if there really is a difference
-			which pygmentize || (echo "You don't have pygments installed.."; exit 1)
+			which pygmentize 2>&1 >/dev/null || (echo "You don't have pygments installed.."; exit 1)
 			PYGMENT_STYLE=${PYGMENT_STYLE:-native}
-			git diff --color --patch-with-stat HEAD^ HEAD -- . | pygmentize -f html -l diff -O full,noclasses,style="$PYGMENT_STYLE" > $TMP.diff
+			git diff --no-color --patch-with-stat HEAD^ HEAD -- . | pygmentize -f html -l diff -O full,noclasses,style="$PYGMENT_STYLE" > $TMP.diff
                     fi
                 else
                     git diff --patch-with-stat HEAD^ HEAD -- . >$TMP.diff

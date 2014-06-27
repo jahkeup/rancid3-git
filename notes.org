@@ -16,3 +16,8 @@
 
 ** Bash is required by rancid-cvs & control_rancid
 
+* Tasks
+
+** TODO Get pygments working for cvs and svn
+   Need to get someone who actually uses cvs or svn to help out
+   here. I don't use these.
