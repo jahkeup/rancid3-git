@@ -6,12 +6,12 @@ dnl	VERSION needs to be updated such that 'make dist' uses the correct
 dnl	filename for the directory name and tarball.
 dnl VERSION=`sed -n 's/.*version.*"\(.*\)".*/\1/p' $srcdir/include/version.h.in|tr -d ' '`
 dnl PACKAGE=`sed -n 's/.*package.*"\(.*\)".*/\1/p' $srcdir/include/version.h.in|tr -d ' '`
-VERSION=`$srcdir/configure.vers package_name`
-PACKAGE=`$srcdir/configure.vers package_version`
+VERSION=`./configure.vers package_name`
+PACKAGE=`./configure.vers package_version`
 AC_SUBST(VERSION)
 AC_SUBST(PACKAGE)
-AC_INIT(m4_esyscmd(configure.vers package_name),
-	m4_esyscmd(configure.vers package_version),
+AC_INIT(m4_esyscmd(./configure.vers package_name),
+	m4_esyscmd(./configure.vers package_version),
 	[rancid@shrubbery.net])
 AC_CONFIG_SRCDIR(CHANGES)
 AM_INIT_AUTOMAKE

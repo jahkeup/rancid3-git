@@ -8,3 +8,9 @@
    Change made in [[file:bin/control_rancid.in::RCSSYS%3D${RCSSYS:%3D}%3B][control_rancid.in]]
 ** HTML Mail doesn't work with MAXSZ, don't use it with HTMLMAILS=YES
 
+
+* Notes
+
+** Make (install) must be called from the top level dir
+   The script was referencing $srcdir/configure.vers before but that
+   didn't work. I've hardcoded ./configure.vers for now.
